@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discover - Unfiltered Liquidity Pools</title>
+    <title>Discover - Unfiltered LPs</title>
     <style>
         body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
         .header { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; }
@@ -22,6 +22,7 @@
         .sort-asc::after { content: " ↑"; color: #00ff88; }
         .sort-desc::after { content: " ↓"; color: #ff6666; }
         .loading { color: #888; text-align: center; padding: 20px; }
+        .error { color: #ff4444; }
     </style>
 </head>
 <body>
@@ -55,86 +56,108 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="poolsBody"><tr class="loading"><td colspan="11">Loading pools...</td></tr></tbody>
+        <tbody id="poolsBody"><tr class="loading"><td colspan="11">Loading live data...</td></tr></tbody>
     </table>
 
     <script>
-        // DEXs ordered by DeFiLlama TVL (Nov 26, 2025)
-        const dexList = [
-            "Uniswap", "PancakeSwap", "Raydium", "Orca", "SushiSwap",
-            "Aerodrome", "Velodrome", "QuickSwap", "Meteora",
-            "Pump.fun", "HyperSwap", "ProjectX", "Shadow"
-        ];
-        const dexChainMap = {
-            "Uniswap":"Ethereum","PancakeSwap":"BNB Chain","Raydium":"Solana","Orca":"Solana","SushiSwap":"Ethereum",
-            "Aerodrome":"Base","Velodrome":"Optimism","QuickSwap":"Polygon","Meteora":"Solana",
-            "Pump.fun":"Solana","HyperSwap":"HyperEVM","ProjectX":"HyperEVM","Shadow":"Sonic"
-        };
+        // REPLACE WITH YOUR KEYS (free signups)
+        const GECKO_API_KEY = ''; // GeckoTerminal (optional for basic)
+        const MORALIS_API_KEY = ''; // Moralis for Pump.fun
+        const METEORA_API = 'https://api.meteora.ag/pair/all'; // Public
 
-        // Fill DEX dropdown (no "All")
+        // DEX list (sorted by DeFiLlama TVL)
+        const dexList = ["Uniswap", "PancakeSwap", "Raydium", "Orca", "SushiSwap", "Aerodrome", "Velodrome", "QuickSwap", "Meteora", "Pump.fun", "HyperSwap", "ProjectX", "Shadow"];
+        const dexChainMap = {"Uniswap":"eth","PancakeSwap":"bsc","Raydium":"solana","Orca":"solana","SushiSwap":"eth","Aerodrome":"base","Velodrome":"optimism","QuickSwap":"polygon","Meteora":"solana","Pump.fun":"solana","HyperSwap":"hyperliquid","ProjectX":"hyperliquid","Shadow":"sonic"}; // Gecko network IDs
+
+        // Fill dropdowns
         const dexSelect = document.getElementById("dexFilter");
         dexList.forEach(dex => dexSelect.add(new Option(dex, dex)));
-        dexSelect.value = "Uniswap"; // Default
+        dexSelect.value = "Uniswap";
 
-        // Fill Chain dropdown
-        const chains = [...new Set(Object.values(dexChainMap))].sort();
+        const chains = [...new Set(Object.values(dexChainMap))].map(c => c === 'bsc' ? 'BNB Chain' : c === 'eth' ? 'Ethereum' : c.charAt(0).toUpperCase() + c.slice(1));
         const chainSelect = document.getElementById("chainFilter");
         chains.forEach(c => chainSelect.add(new Option(c, c)));
 
-        // Auto-chain select
         dexSelect.onchange = function() {
             chainSelect.value = dexChainMap[this.value];
-            applyFilters();
+            loadPools();
         };
-        chainSelect.onchange = applyFilters;
+        chainSelect.onchange = loadPools;
 
-        // Generate 16 pools per DEX (208 total)
-        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE"];
-        let masterPools = [];
-        dexList.forEach(dex => {
-            for(let i=0; i<16; i++){
-                const a = tokens[Math.floor(Math.random()*tokens.length)];
-                const b = tokens[Math.floor(Math.random()*tokens.length)];
-                const tvl = Math.round(Math.random()*15000000 + 50000);
-                const fees = Math.round(Math.random()*80000 + 500);
-                const feeTvl = Number(((fees/tvl)*100).toFixed(3));
-                const trend = Math.random() < 0.3 ? -1 : Math.random() < 0.6 ? 1 : 0;
-                const priceData = Array.from({length:30}, (_, j) => Math.max(0.1, 100 + Math.random()*300 + j*trend*3 + Math.random()*20-10));
+        let pools = [];
+        async function loadPools() {
+            const tbody = document.getElementById("poolsBody");
+            tbody.innerHTML = '<tr class="loading"><td colspan="11">Loading live pools...</td></tr>';
+
+            const dex = dexSelect.value;
+            const chain = dexChainMap[dex];
+            let apiPools = [];
+
+            if (dex === "Meteora") {
+                // Meteora specific
+                try {
+                    const res = await fetch(METEORA_API);
+                    const data = await res.json();
+                    apiPools = data.slice(0, 20); // Top 20
+                } catch (e) {
+                    tbody.innerHTML = '<tr class="error"><td colspan="11">Error loading Meteora data</td></tr>';
+                    return;
+                }
+            } else if (dex === "Pump.fun") {
+                // Moralis for Pump.fun new pools
+                try {
+                    const res = await fetch(`https://solana-gateway.moralis.io/token/mainnet/new?chain=solana&limit=20`, {
+                        headers: { 'X-API-Key': MORALIS_API_KEY }
+                    });
+                    const data = await res.json();
+                    apiPools = data.result;
+                } catch (e) {
+                    tbody.innerHTML = '<tr class="error"><td colspan="11">Error loading Pump.fun data (check Moralis key)</td></tr>';
+                    return;
+                }
+            } else {
+                // GeckoTerminal for others
+                try {
+                    const res = await fetch(`https://api.geckoterminal.com/api/v2/networks/${chain}/pools?include=base_token,quote_token&sort=reserve_in_usd_desc&limit=20`, {
+                        headers: GECKO_API_KEY ? { 'Authorization': `Bearer ${GECKO_API_KEY}` } : {}
+                    });
+                    const data = await res.json();
+                    apiPools = data.data;
+                } catch (e) {
+                    tbody.innerHTML = '<tr class="error"><td colspan="11">Error loading GeckoTerminal data (check key)</td></tr>';
+                    return;
+                }
+            }
+
+            pools = await Promise.all(apiPools.map(async (pool) => {
+                const base = pool.attributes.base_token_symbol;
+                const quote = pool.attributes.quote_token_symbol;
+                const tvl = pool.attributes.reserve_in_usd;
+                const fees24h = pool.attributes.h24_volume_usd * (dex === "Uniswap" ? 0.003 : 0.0025); // Avg fee tier
+                const feeTvl = (fees24h / tvl) * 100;
+                const age = new Date(pool.attributes.created_at).toLocaleDateString(); // Simplified
+
+                // OHLCV for volatility/correlation/drawdown
+                let priceData = [];
+                try {
+                    const ohlcvRes = await fetch(`https://api.geckoterminal.com/api/v2/networks/${chain}/pools/${pool.attributes.network.address}/ohlcv/minute?aggregated=false&limit=30`);
+                    const ohlcvData = await ohlcvRes.json();
+                    priceData = ohlcvData.data.map(d => d.attributes.close);
+                } catch (e) {
+                    priceData = Array(30).fill(100); // Fallback
+                }
                 const maxP = Math.max(...priceData), minP = Math.min(...priceData);
                 const drawdown = (maxP - minP) / maxP;
-                const adjApr = Number((feeTvl * (1 - drawdown)).toFixed(2));
-                const volatility = (Math.random()*0.7 + 0.1).toFixed(2);
-                const correlation = (Math.random()*0.8 + 0.1).toFixed(2);
-                const rewardsTvl = (Math.random()*25).toFixed(2);
-                const volTvl = (Math.random()*250 + 20).toFixed(2);
-                const age = dex === "Pump.fun" ? `${Math.floor(Math.random()*12)+1}h` : `${Math.floor(Math.random()*365)+1}d`;
+                const adjApr = (feeTvl * (1 - drawdown)).toFixed(2);
+                const volatility = (priceData.reduce((a,b)=>a+Math.pow(b-Math.mean(priceData),2),0)/priceData.length).toFixed(2); // Std dev
+                const correlation = 0.7; // Placeholder - compute Pearson from pair assets if time
+                const rewardsTvl = 0; // From farm APIs if needed
+                const volTvl = (pool.attributes.h24_volume_usd / tvl * 100).toFixed(2);
 
-                masterPools.push({
-                    pair: `${a}/${b}`,
-                    dex,
-                    chain: dexChainMap[dex],
-                    age,
-                    tvl,
-                    fees,
-                    feeTvl,
-                    adjApr,
-                    volatility,
-                    correlation,
-                    rewardsTvl,
-                    volTvl,
-                    priceData,
-                    trend
-                });
-            }
-        });
-        let pools = [...masterPools];
+                return { pair: `${base}/${quote}`, age, tvl, fees24h, feeTvl, adjApr, volatility, correlation, rewardsTvl, volTvl, priceData };
+            }));
 
-        // Pure SVG mini-chart (no canvas, always works)
-        function drawChart(element, data, trend) {
-            const color = trend === -1 ? "#ff4444" : trend === 1 ? "#00ff88" : "#ffaa00";
-            const min = Math.min(...data), max = Math.max(...data);
-            const points = data.map((v, i) => `${i * 110 / 29},${36 - (v - min) / (max - min) * 34}`).join(" ");
-            element.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}"/></svg>`;
+            render();
         }
 
         function render() {
@@ -146,7 +169,7 @@
                     <td class="pair-cell"><span class="star">⭐</span> ${p.pair} <div class="mini-chart"></div></td>
                     <td>${p.age}</td>
                     <td>$${p.tvl.toLocaleString()}</td>
-                    <td>$${p.fees.toLocaleString()}</td>
+                    <td>$${p.fees24h.toLocaleString()}</td>
                     <td>${p.feeTvl.toFixed(2)}%</td>
                     <td class="positive">${p.adjApr}%</td>
                     <td>${p.volatility}</td>
@@ -155,25 +178,22 @@
                     <td>${p.volTvl}%</td>
                     <td><button class="simulate">Simulate</button></td>`;
                 tbody.appendChild(row);
-                drawChart(row.querySelector(".mini-chart"), p.priceData, p.trend);
+                drawChart(row.querySelector(".mini-chart"), p.priceData, p.adjApr < 5 ? -1 : p.adjApr > 10 ? 1 : 0); // Trend based on APR
             });
         }
 
-        function applyFilters() {
-            const s = document.getElementById("searchInput").value.toLowerCase();
-            const d = dexSelect.value;
-            const c = chainSelect.value;
-            pools = masterPools.filter(p =>
-                p.pair.toLowerCase().includes(s) &&
-                p.dex === d &&
-                p.chain === c
-            );
-            render();
+        // SVG chart
+        function drawChart(element, data, trend) {
+            const color = trend === -1 ? "#ff4444" : trend === 1 ? "#00ff88" : "#ffaa00";
+            const min = Math.min(...data), max = Math.max(...data);
+            const points = data.map((v, i) => `${i * 110 / 29},${36 - (v - min) / (max - min) * 34}`).join(" ");
+            element.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}"/></svg>`;
         }
 
+        // Sorting (same as before)
         let sortDir = {};
         function sortTable(col) {
-            const keys = ["pair", "age", "tvl", "fees", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
+            const keys = ["pair", "age", "tvl", "fees24h", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
             const key = keys[col];
             if (!key) return;
             const dir = sortDir[col] === 'asc' ? 'desc' : 'asc';
@@ -191,11 +211,11 @@
         }
 
         // Listeners
-        document.getElementById("searchInput").oninput = applyFilters;
-        document.getElementById("timeFilter").onchange = applyFilters;
+        document.getElementById("searchInput").oninput = applyFilters; // Filter on search
+        document.getElementById("timeFilter").onchange = loadPools; // Reload for timeframe (OHLCV adjust)
 
-        // Start
-        document.addEventListener("DOMContentLoaded", () => setTimeout(applyFilters, 100));
+        // Initial load
+        loadPools();
     </script>
 </body>
 </html>
