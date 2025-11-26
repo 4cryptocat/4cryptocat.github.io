@@ -12,4 +12,212 @@
         .search-bar { padding: 10px; width: 300px; background: #333; border: none; border-radius: 4px; color: white; }
         .filters select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; background: #222; font-size: 14px; overflow-x: auto; display: block; white-space: nowrap; }
-        th, td { padding: 10px 12px; border-bottom: 1px solid #444
+        th, td { padding: 10px 12px; border-bottom: 1px solid #444; text-align: right; }
+        th { background: #333; cursor: pointer; user-select: none; }
+        th:first-child, td:first-child { text-align: left; }
+        .pair-cell { display: flex; align-items: center; gap: 10px; }
+        .mini-chart { width: 110px; height: 36px; background: #222; border: 1px solid #444; border-radius: 2px; }
+        .star { cursor: pointer; font-size: 18px; }
+        .simulate { background: #0066ff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .positive { color: #00ff88; }
+        .sort-asc::after { content: " ↑"; color: #00ff88; }
+        .sort-desc::after { content: " ↓"; color: #ff6666; }
+        .loading { color: #888; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Discover - Unfiltered Liquidity Pools</h1>
+        <input type="text" class="search-bar" placeholder="Search pair..." id="searchInput">
+        <div class="filters">
+            <select id="dexFilter"></select>
+            <select id="chainFilter"></select>
+            <select id="timeFilter">
+                <option>30 Days</option>
+                <option>7 Days</option>
+                <option>24 Hours</option>
+            </select>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Pair</th>
+                <th onclick="sortTable(1)">Age</th>
+                <th onclick="sortTable(2)">TVL</th>
+                <th onclick="sortTable(3)">Fees (24h)</th>
+                <th onclick="sortTable(4)">Fee/TVL</th>
+                <th class="positive" onclick="sortTable(5)">APR (Adj. IL)</th>
+                <th onclick="sortTable(6)">Volatility</th>
+                <th onclick="sortTable(7)">Correlation</th>
+                <th onclick="sortTable(8)">Rewards/TVL</th>
+                <th onclick="sortTable(9)">Volume/TVL</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="poolsBody"><tr class="loading"><td colspan="11">Loading pools...</td></tr></tbody>
+    </table>
+
+    <script>
+        // DEX list by TVL descending (DeFiLlama 2025 data: Uniswap $4.5B, PancakeSwap $1.8B, etc.)
+        const dexList = [
+            {name: "Uniswap", chain: "Ethereum", tvl: 4.5},
+            {name: "PancakeSwap", chain: "BNB Chain", tvl: 1.8},
+            {name: "Raydium", chain: "Solana", tvl: 1.2},
+            {name: "Orca", chain: "Solana", tvl: 0.9},
+            {name: "SushiSwap", chain: "Ethereum", tvl: 0.8},
+            {name: "Aerodrome", chain: "Base", tvl: 0.7},
+            {name: "Velodrome", chain: "Optimism", tvl: 0.6},
+            {name: "QuickSwap", chain: "Polygon", tvl: 0.5},
+            {name: "Meteora", chain: "Solana", tvl: 0.4},
+            {name: "Pump.fun", chain: "Solana", tvl: 0.3},
+            {name: "HyperSwap", chain: "HyperEVM", tvl: 0.2},
+            {name: "ProjectX", chain: "HyperEVM", tvl: 0.15},
+            {name: "Shadow", chain: "Sonic", tvl: 0.1}
+        ];
+
+        // Fill DEX dropdown (no "All")
+        const dexSelect = document.getElementById("dexFilter");
+        dexList.forEach(dex => {
+            let o = new Option(dex.name, dex.name);
+            dexSelect.add(o);
+        });
+        dexSelect.value = "Uniswap"; // Default
+
+        // Chains dropdown
+        const allChains = [...new Set(dexList.map(d => d.chain))].sort();
+        const chainSelect = document.getElementById("chainFilter");
+        allChains.forEach(c => {
+            let o = new Option(c, c);
+            chainSelect.add(o);
+        });
+
+        // Auto-chain select
+        dexSelect.onchange = function() {
+            chainSelect.value = dexList.find(d => d.name === this.value).chain;
+            applyFilters();
+        };
+        chainSelect.onchange = applyFilters;
+
+        // Generate 200+ rows (15+ per DEX for full loading)
+        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE","RAY","ORCA"];
+        let masterPools = [];
+        dexList.forEach(dex => {
+            for(let i=0; i<16; i++) { // 16 per DEX = 208 total
+                const a = tokens[Math.floor(Math.random()*tokens.length)];
+                const b = tokens[Math.floor(Math.random()*tokens.length)];
+                const tvl = Math.round(Math.random()*dex.tvl*1e9 + 10000); // Scaled to DEX TVL
+                const fees = Math.round(Math.random()*50000 + 500);
+                const feeTvl = Number(((fees/tvl)*100).toFixed(3));
+                const trend = Math.random() > 0.7 ? -1 : Math.random() > 0.5 ? 1 : 0;
+                const priceData = Array.from({length:30}, (_, j) => Math.max(0.1, 100 + Math.random()*300 + j*trend*3 + Math.random()*20-10));
+                const maxP = Math.max(...priceData), minP = Math.min(...priceData);
+                const drawdown = (maxP - minP) / maxP;
+                const adjApr = Number((feeTvl * (1 - drawdown)).toFixed(2));
+                const volatility = (Math.random()*0.7 + 0.1).toFixed(2);
+                const correlation = (Math.random()*0.8 + 0.1).toFixed(2);
+                const rewardsTvl = (Math.random()*25).toFixed(2);
+                const volTvl = (Math.random()*250 + 20).toFixed(2);
+                const age = dex.name === "Pump.fun" ? `${Math.floor(Math.random()*12)+1}h` : `${Math.floor(Math.random()*365)+1}d`;
+
+                masterPools.push({
+                    pair: `${a}/${b}`,
+                    dex: dex.name,
+                    chain: dex.chain,
+                    age,
+                    tvl,
+                    fees,
+                    feeTvl,
+                    adjApr,
+                    volatility,
+                    correlation,
+                    rewardsTvl,
+                    volTvl,
+                    priceData,
+                    trend
+                });
+            }
+        });
+        let pools = [...masterPools];
+
+        // Chart function (Chart.js or SVG fallback)
+        function drawChart(canvas, data, trend) {
+            const color = trend === 0 ? "#ff4444" : trend === 1 ? "#00ff88" : "#ffaa00";
+            try {
+                const ctx = canvas.getContext("2d");
+                new Chart(ctx, {
+                    type: "line",
+                    data: { datasets: [{ data, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false }] },
+                    options: { scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } }, animation: false, maintainAspectRatio: false }
+                });
+            } catch (e) {
+                // SVG fallback
+                const min = Math.min(...data), max = Math.max(...data);
+                const points = data.map((v, i) => `${i*110/29},${36 - (v - min)/(max - min)*34}`).join(" ");
+                canvas.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}"/></svg>`;
+            }
+        }
+
+        function render() {
+            const tbody = document.getElementById("poolsBody");
+            tbody.innerHTML = "";
+            pools.forEach((p, i) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="pair-cell"><span class="star">⭐</span> ${p.pair} <canvas class="mini-chart"></canvas></td>
+                    <td>${p.age}</td>
+                    <td>$${p.tvl.toLocaleString()}</td>
+                    <td>$${p.fees.toLocaleString()}</td>
+                    <td>${p.feeTvl.toFixed(2)}%</td>
+                    <td class="positive">${p.adjApr}%</td>
+                    <td>${p.volatility}</td>
+                    <td>${p.correlation}</td>
+                    <td>${p.rewardsTvl}%</td>
+                    <td>${p.volTvl}%</td>
+                    <td><button class="simulate">Simulate</button></td>`;
+                tbody.appendChild(row);
+                drawChart(row.querySelector("canvas"), p.priceData, p.trend);
+            });
+        }
+
+        function applyFilters() {
+            const s = document.getElementById("searchInput").value.toLowerCase();
+            const d = dexSelect.value;
+            const c = chainSelect.value;
+            pools = masterPools.filter(p =>
+                p.pair.toLowerCase().includes(s) &&
+                p.dex === d &&
+                p.chain === c
+            );
+            render();
+        }
+
+        let sortDir = {};
+        function sortTable(col) {
+            const keys = ["pair", "age", "tvl", "fees", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
+            const key = keys[col];
+            if (!key) return;
+            const dir = sortDir[col] === 'asc' ? 'desc' : 'asc';
+            sortDir[col] = dir;
+            pools.sort((a, b) => {
+                let x = a[key], y = b[key];
+                if (typeof x === "string") x = x.toLowerCase(), y = y.toLowerCase();
+                else x = parseFloat(x) || 0, y = parseFloat(y) || 0;
+                return dir === 'asc' ? (x > y ? 1 : x < y ? -1 : 0) : (x < y ? 1 : x > y ? -1 : 0);
+            });
+            document.querySelectorAll("th").forEach((th, i) => {
+                th.className = i === col ? (dir === 'asc' ? "sort-asc" : "sort-desc") : "";
+            });
+            render();
+        }
+
+        // Listeners
+        document.getElementById("searchInput").oninput = applyFilters;
+        document.getElementById("timeFilter").onchange = applyFilters;
+
+        // Start
+        document.addEventListener("DOMContentLoaded", () => setTimeout(applyFilters, 100));
+    </script>
+</body>
+</html>
