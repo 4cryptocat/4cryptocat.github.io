@@ -15,9 +15,9 @@
         th { background: #333; cursor: pointer; user-select: none; }
         th:first-child, td:first-child { text-align: left; }
         .pair-cell { display: flex; align-items: center; gap: 10px; }
-        .pair-info { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; }
+        .pair-info { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #aaa; }
         .dex-logo { width: 16px; height: 16px; border-radius: 3px; }
-        .pair-link { color: #00ff88; text-decoration: none; font-weight: bold; }
+        .pair-link { color: #00ff88; text-decoration: none; font-weight: bold; font-size: 14px; }
         .pair-link:hover { text-decoration: underline; }
         .mini-chart { width: 110px; height: 36px; background: #222; border: 1px solid #444; border-radius: 2px; position: relative; overflow: hidden; }
         .star { cursor: pointer; font-size: 18px; }
@@ -26,7 +26,6 @@
         .footer-controls { margin-top: 20px; text-align: right; }
         .footer-controls select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
         .loading { color: #888; text-align: center; padding: 20px; }
-        .error { color: #ff4444; }
     </style>
 </head>
 <body>
@@ -73,167 +72,34 @@
     </div>
 
     <script>
-        // REPLACE WITH YOUR KEYS (free signups)
-        const GECKO_API_KEY = ''; // GeckoTerminal (optional)
-        const MORALIS_API_KEY = ''; // Moralis for Pump.fun
-
         // DEX list ordered by DeFiLlama TVL
         const dexList = ["All DEXs", "Uniswap", "PancakeSwap", "Raydium", "Orca", "SushiSwap", "Aerodrome", "Velodrome", "QuickSwap", "Meteora", "Pump.fun", "HyperSwap", "ProjectX", "Shadow"];
         const dexChainMap = {"Uniswap":"Ethereum","PancakeSwap":"BNB Chain","Raydium":"Solana","Orca":"Solana","SushiSwap":"Ethereum","Aerodrome":"Base","Velodrome":"Optimism","QuickSwap":"Polygon","Meteora":"Solana","Pump.fun":"Solana","HyperSwap":"HyperEVM","ProjectX":"HyperEVM","Shadow":"Sonic"};
         const dexVersion = {"Uniswap":"v3","PancakeSwap":"v3","Raydium":"Concentrated","Orca":"All","SushiSwap":"v3","Aerodrome":"Slipstream","Velodrome":"v3","QuickSwap":"v3","Meteora":"DLMM","Pump.fun":"Launchpad","HyperSwap":"v3","ProjectX":"All","Shadow":"CLMM"};
-        const dexAppUrl = {"Uniswap":"https://app.uniswap.org/explore/pools/ethereum/","PancakeSwap":"https://pancakeswap.finance/swap?outputCurrency=","Raydium":"https://raydium.io/swap/?inputMint=","Orca":"https://www.orca.so/pool/","SushiSwap":"https://www.sushi.com/swap","Aerodrome":"https://aerodrome.finance/swap","Velodrome":"https://app.velodrome.finance/swap","QuickSwap":"https://quickswap.exchange/#/swap","Meteora":"https://app.meteora.ag/pools/","Pump.fun":"https://pump.fun/","HyperSwap":"https://app.hyperswap.exchange/swap","ProjectX":"https://projectx.exchange/swap","Shadow":"https://shadow.exchange/swap"};
-
-        // Fill dropdowns
-        const dexSelect = document.getElementById("dexFilter");
-        dexList.forEach(dex => dexSelect.add(new Option(dex, dex)));
-        dexSelect.value = "All DEXs";
-
-        const chains = ["All Chains", ...Object.values(dexChainMap)].sort();
-        const chainSelect = document.getElementById("chainFilter");
-        chains.forEach(c => chainSelect.add(new Option(c, c)));
-
-        // Auto-chain
-        dexSelect.onchange = function() {
-            if(this.value !== "All DEXs") chainSelect.value = dexChainMap[this.value];
-            else chainSelect.value = "All Chains";
-            applyFilters();
+        // DEX pool URLs (pre-loads pair on pool page)
+        const dexPoolUrl = {
+            "Uniswap": "https://app.uniswap.org/explore/pools/ethereum/",
+            "PancakeSwap": "https://pancakeswap.finance/info/pool/",
+            "Raydium": "https://raydium.io/pools/",
+            "Orca": "https://www.orca.so/pool/",
+            "SushiSwap": "https://www.sushi.com/pool/",
+            "Aerodrome": "https://aerodrome.finance/pools/",
+            "Velodrome": "https://app.velodrome.finance/pools/",
+            "QuickSwap": "https://quickswap.exchange/#/pools/",
+            "Meteora": "https://app.meteora.ag/pools/",
+            "Pump.fun": "https://pump.fun/",
+            "HyperSwap": "https://app.hyperswap.exchange/pools/",
+            "ProjectX": "https://projectx.exchange/pools/",
+            "Shadow": "https://shadow.exchange/pools/"
         };
-        chainSelect.onchange = applyFilters;
-
-        // Generate mock data (replace with API in future)
-        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE"];
-        let masterPools = [];
-        dexList.slice(1).forEach(dex => {
-            for(let i=0; i<16; i++){
-                const a = tokens[Math.floor(Math.random()*tokens.length)];
-                const b = tokens[(Math.floor(Math.random()*tokens.length))];
-                const poolAddress = `0x${Math.random().toString(16).substring(2,10)}`; // Mock address
-                const tvl = Math.round(Math.random()*15e6 + 5e4);
-                const fees = Math.round(Math.random()*8e4 + 500);
-                const feeTvl = Number(((fees/tvl)*100).toFixed(3));
-                const trend = Math.random()<0.3?-1:(Math.random()<0.6?1:0);
-                const priceData = Array.from({length:30},(_,j)=>100+Math.random()*300+j*trend*3+Math.random()*20-10);
-                const drawdown = (Math.max(...priceData)-Math.min(...priceData))/Math.max(...priceData);
-                const adjApr = Number((feeTvl*(1-drawdown)).toFixed(2));
-                const age = dex==="Pump.fun"?`${Math.floor(Math.random()*10)+1}h`:`${Math.floor(Math.random()*365)+10}d`;
-
-                masterPools.push({
-                    pair: `${a}/${b}`,
-                    dex,
-                    version: dexVersion[dex] || "v2",
-                    chain: dexChainMap[dex],
-                    poolAddress,
-                    age,
-                    tvl,
-                    fees,
-                    feeTvl,
-                    adjApr,
-                    volatility: (Math.random()*0.7+0.1).toFixed(2),
-                    correlation: (Math.random()*0.8+0.1).toFixed(2),
-                    rewardsTvl: (Math.random()*25).toFixed(2),
-                    volTvl: (Math.random()*250+20).toFixed(2),
-                    priceData,
-                    trend
-                });
-            }
-        });
-        let filteredPools = [...masterPools];
-        let currentDisplay = [];
-
-        // SVG chart
-        function drawChart(el, data, trend) {
-            const color = trend === -1 ? "#ff4444" : trend === 1 ? "#00ff88" : "#ffaa00";
-            const min = Math.min(...data), max = Math.max(...data);
-            if (max === min) { el.innerHTML = '<div style="line-height:36px;font-size:10px;color:#888">Flat</div>'; return; }
-            const points = data.map((v, i) => `${i * 110 / 29},${36 - (v - min) / (max - min) * 34}`).join(" ");
-            el.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}"/></svg>`;
-        }
-
-        function render() {
-            const tbody = document.getElementById("poolsBody");
-            tbody.innerHTML = "";
-            currentDisplay.forEach(p => {
-                const row = document.createElement("tr");
-                const appLink = dexAppUrl[p.dex] + p.poolAddress; // Clickable link to DEX app
-                row.innerHTML = `
-                    <td class="pair-cell">
-                        <div class="pair-info">
-                            <svg class="dex-logo" viewBox="0 0 24 24" fill="currentColor">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-                                <text x="12" y="17" text-anchor="middle" font-size="8" fill="currentColor">${p.dex.charAt(0)}</text>
-                            </svg>
-                            <span>${p.version} • ${p.chain}</span>
-                        </div>
-                        <a href="${appLink}" target="_blank" class="pair-link" rel="noopener">${p.pair}</a>
-                        <div class="mini-chart"></div>
-                    </td>
-                    <td>${p.age}</td>
-                    <td>$${p.tvl.toLocaleString()}</td>
-                    <td>$${p.fees.toLocaleString()}</td>
-                    <td>${p.feeTvl.toFixed(2)}%</td>
-                    <td class="positive">${p.adjApr}%</td>
-                    <td>${p.volatility}</td>
-                    <td>${p.correlation}</td>
-                    <td>${p.rewardsTvl}%</td>
-                    <td>${p.volTvl}%</td>
-                    <td><button class="simulate">Simulate</button></td>`;
-                tbody.appendChild(row);
-                drawChart(row.querySelector(".mini-chart"), p.priceData, p.trend);
-            });
-        }
-
-        function applyFilters() {
-            const search = document.getElementById("searchInput").value.toLowerCase();
-            const selectedDex = dexSelect.value;
-            const selectedChain = chainSelect.value;
-
-            filteredPools = masterPools.filter(p =>
-                p.pair.toLowerCase().includes(search) &&
-                (selectedDex === "All DEXs" || p.dex === selectedDex) &&
-                (selectedChain === "All Chains" || p.chain === selectedChain)
-            );
-
-            // Sort by Fee/TVL descending first
-            filteredPools.sort((a, b) => b.feeTvl - a.feeTvl);
-
-            // Then by APR Adj descending among high Fee/TVL
-            filteredPools.sort((a, b) => {
-                if (Math.abs(a.feeTvl - b.feeTvl) < 0.01) return b.adjApr - a.adjApr;
-                return b.feeTvl - a.feeTvl;
-            });
-
-            updateDisplay();
-        }
-
-        function updateDisplay() {
-            const size = parseInt(document.getElementById("pageSize").value);
-            currentDisplay = filteredPools.slice(0, size);
-            render();
-        }
-
-        // Sorting
-        let sortState = {};
-        function sortTable(col) {
-            const keys = ["pair", "age", "tvl", "fees", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
-            const key = keys[col];
-            sortState[col] = sortState[col] === "asc" ? "desc" : "asc";
-            filteredPools.sort((a, b) => {
-                let x = a[key], y = b[key];
-                if (typeof x === "string") x = x.toLowerCase(), y = y.toLowerCase();
-                else x = +x || 0, y = +y || 0;
-                return sortState[col] === "asc" ? (x > y ? 1 : x < y ? -1 : 0) : (x < y ? 1 : x > y ? -1 : 0);
-            });
-            document.querySelectorAll("th").forEach((th, i) => th.className = i === col ? (sortState[col] === "asc" ? "sort-asc" : "sort-desc") : "");
-            updateDisplay();
-        }
-
-        // Listeners
-        document.getElementById("searchInput").oninput = applyFilters;
-        document.getElementById("timeFilter").onchange = applyFilters;
-        document.getElementById("pageSize").onchange = updateDisplay;
-
-        // Initial load (10 rows, no arrows)
-        document.addEventListener("DOMContentLoaded", () => setTimeout(applyFilters, 100));
-    </script>
-</body>
-</html>
+        // DEX logos (SVG from crypto-icons-plus GitHub)
+        const dexLogos = {
+            "Uniswap": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5s4.701-10.5 10.5-10.5 10.5 4.701 10.5 10.5-4.701 10.5-10.5 10.5z"/></svg>',
+            "PancakeSwap": '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>',
+            "Raydium": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>',
+            "Orca": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5s4.701-10.5 10.5-10.5 10.5 4.701 10.5 10.5-4.701 10.5-10.5 10.5z"/></svg>',
+            "SushiSwap": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5s4.701-10.5 10.5-10.5 10.5 4.701 10.5 10.5-4.701 10.5-10.5 10.5z"/></svg>',
+            "Aerodrome": '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>',
+            "Velodrome": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>',
+            "QuickSwap": '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>',
+            "Meteora": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5s4.701-10.5 10.5-10.5 10.5
