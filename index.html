@@ -4,26 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discover - Unfiltered LPs</title>
+    <!-- Chart.js first so it's ready when we use it -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
-        .header { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; }
-        h1 { margin: 0; font-size: 24px; }
-        .search-bar { padding: 10px; width: 300px; background: #333; border: none; border-radius: 4px; color: white; }
-        .filters select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; background: #222; font-size: 14px; overflow-x: auto; display: block; white-space: nowrap; }
-        thead { display: table-header-group; }
-        tbody { display: table-row-group; }
-        th, td { padding: 10px 12px; border-bottom: 1px solid #444; text-align: right; }
-        th { background: #333; cursor: pointer; user-select: none; }
-        th:first-child, td:first-child { text-align: left; }
-        .pair-cell { display: flex; align-items: center; gap: 10px; }
-        .mini-chart { width: 110px; height: 36px; }
-        .star { cursor: pointer; font-size: 18px; }
-        .simulate { background: #0066ff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .positive { color: #00ff88; }
-        .sort-asc::after { content: " ↑"; color: #00ff88; }
-        .sort-desc::after { content: " ↓"; color: #ff6666; }
+        body {font-family: Arial, sans-serif;background:#111;color:#eee;margin:0;padding:20px;}
+        .header {display:flex;flex-wrap:wrap;gap:15px;align-items:center;margin-bottom:20px;}
+        h1 {margin:0;font-size:24px;}
+        .search-bar {padding:10px;width:300px;background:#333;border:none;border-radius:4px;color:white;}
+        .filters select {padding:8px;background:#333;color:white;border:1px solid #555;border-radius:4px;}
+        table {width:100%;border-collapse:collapse;background:#222;font-size:14px;overflow-x:auto;display:block;white-space:nowrap;}
+        th, td {padding:10px 12px;border-bottom:1px solid #444;text-align:right;}
+        th {background:#333;cursor:pointer;user-select:none;}
+        th:first-child, td:first-child {text-align:left;}
+        .pair-cell {display:flex;align-items:center;gap:10px;}
+        .mini-chart {width:110px;height:36px;}
+        .star {cursor:pointer;font-size:18px;}
+        .simulate {background:#0066ff;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
+        .positive {color:#00ff88;}
+        .sort-asc::after {content:" up";color:#00ff88;}
+        .sort-desc::after {content:" down";color:#ff6666;}
     </style>
 </head>
 <body>
@@ -57,177 +56,109 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="poolsBody"></tbody>
+        <tbody id="poolsBody"><tr><td colspan="11">Loading...</td></tr></tbody>
     </table>
 
     <script>
-        // DEX → Chain mapping
+        // DEX → Chain mapping (auto-select)
         const dexChainMap = {
-            "Uniswap": "Ethereum", "QuickSwap": "Polygon", "PancakeSwap": "BNB Chain",
-            "SushiSwap": "Ethereum", "Orca": "Solana", "Raydium": "Solana",
-            "Velodrome": "Optimism", "Aerodrome": "Base", "HyperSwap": "HyperEVM",
-            "ProjectX": "HyperEVM", "Shadow": "Sonic", "Meteora": "Solana", "Pump.fun": "Solana"
+            "Uniswap":"Ethereum","QuickSwap":"Polygon","PancakeSwap":"BNB Chain",
+            "SushiSwap":"Ethereum","Orca":"Solana","Raydium":"Solana",
+            "Velodrome":"Optimism","Aerodrome":"Base","HyperSwap":"HyperEVM",
+            "ProjectX":"HyperEVM","Shadow":"Sonic","Meteora":"Solana","Pump.fun":"Solana"
         };
         const allDexs = Object.keys(dexChainMap);
         const allChains = [...new Set(Object.values(dexChainMap))].sort();
 
-        // Populate dropdowns
+        // Populate filters
         const dexSelect = document.getElementById("dexFilter");
         const chainSelect = document.getElementById("chainFilter");
-        ["All DEXs", ...allDexs].forEach(d => { 
-            const o = document.createElement("option"); o.text = d; dexSelect.add(o); 
-        });
-        ["All Chains", ...allChains].forEach(c => { 
-            const o = document.createElement("option"); o.text = c; chainSelect.add(o); 
-        });
+        ["All DEXs", ...allDexs].forEach(d=>{let o=document.createElement("option");o.text=d;dexSelect.add(o);});
+        ["All Chains", ...allChains].forEach(c=>{let o=document.createElement("option");o.text=c;chainSelect.add(o);});
 
-        // Auto-select chain
-        dexSelect.addEventListener("change", () => {
-            const selectedDex = dexSelect.value;
-            if (selectedDex !== "All DEXs" && dexChainMap[selectedDex]) {
-                chainSelect.value = dexChainMap[selectedDex];
-            }
+        // Auto chain
+        dexSelect.onchange = () => {
+            if (dexSelect.value!=="All DEXs") chainSelect.value = dexChainMap[dexSelect.value];
             applyFilters();
-        });
-        chainSelect.addEventListener("change", applyFilters);
+        };
+        chainSelect.onchange = applyFilters;
 
-        // Mock data (120 rows)
-        const basePairs = ["USDC", "USDT", "SOL", "ETH", "WIF", "BONK", "JUP", "MATIC", "BNB", "PEPE", "SHIB", "DOGE", "RAY", "ORCA"];
+        // Generate 60 realistic rows
+        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE"];
         const mockPools = [];
-        for (let i = 0; i < 120; i++) {
-            const dex = allDexs[i % allDexs.length];
+        for (let i=0;i<60;i++){
+            const dex = allDexs[i%allDexs.length];
             const chain = dexChainMap[dex];
-            const tokenA = basePairs[i % basePairs.length];
-            const tokenB = basePairs[(i + 3) % basePairs.length];
-            const age = dex === "Pump.fun" ? `${Math.floor(Math.random() * 12)}h` : `${Math.floor(Math.random() * 400)}d`;
-            const tvl = Math.floor(Math.random() * 15000000) + (dex === "Pump.fun" ? 5000 : 50000);
-            const fees24h = Math.floor(Math.random() * 80000) + (dex === "Pump.fun" ? 200 : 1000);
-            const feeTvl = (fees24h / tvl) * 100;
-            const rewardsTvl = dex === "Pump.fun" ? 0 : (Math.random() * 30);
-            const volTvl = (Math.random() * 300 + 20);
-            const volatility = (Math.random() * 80 + 10) / 100;
-            const correlation = (Math.random() * 80 + 10) / 100;
+            const a = tokens[i%tokens.length];
+            const b = tokens[(i+3)%tokens.length];
+            const age = dex==="Pump.fun"? `${Math.floor(Math.random()*10)+1}h` : `${Math.floor(Math.random()*365)+1}d`;
+            const tvl = Math.round((Math.random()*14000000 + (dex==="Pump.fun"?3000:60000)));
+            const fees = Math.round((Math.random()*70000 + (dex==="Pump.fun"?150:800)));
+            const feeTvl = Number(((fees/tvl)*100).toFixed(3));
+            const rewardsTvl = dex==="Pump.fun"?0:Number((Math.random()*25).toFixed(2));
+            const volTvl = Number((Math.random()*250 + 30).toFixed(2));
+            const volatility = Number((Math.random()*70 + 10).toFixed(2));
+            const correlation = Number((Math.random()*80 + 10).toFixed(2));
 
-            // Price data for chart
-            const start = 100 + Math.random() * 400;
-            const trend = i % 4 === 0 ? -1 : (i % 4 === 1 ? 1 : 0);
-            const priceData = Array.from({length: 30}, (_, j) => {
-                const noise = Math.random() * 20 - 10;
-                const change = j * trend * (Math.random() * 3);
-                return Math.max(0.01, start + change + noise);
-            });
-            const maxPrice = Math.max(...priceData);
-            const minPrice = Math.min(...priceData);
-            const maxDrawdown = (maxPrice - minPrice) / maxPrice;
-            const adjApr = Math.max(0, feeTvl * (1 - maxDrawdown));
+            const start = 50 + Math.random()*500;
+            const trend = i%4===0?-1:(i%4===1?1:0);
+            const priceData = Array.from({length:30},(_,j)=>Math.max(0.1,start + j*trend*(Math.random()*3) + (Math.random()*20-10)));
+            const maxP = Math.max(...priceData);
+            const minP = Math.min(...priceData);
+            const drawdown = (maxP-minP)/maxP;
+            const adjApr = Number((feeTvl*(1-drawdown)).toFixed(2));
 
-            mockPools.push({
-                pair: `${tokenA}/${tokenB}`,
-                dex, chain,
-                age,
-                tvl, fees24h, feeTvl,
-                rewardsTvl, volTvl,
-                volatility: volatility.toFixed(2),
-                correlation: correlation.toFixed(2),
-                priceData, maxDrawdown,
-                adjApr: adjApr.toFixed(2)
-            });
+            mockPools.push({pair:`${a}/${b}`,dex,chain,age,tvl,fees,feeTvl,rewardsTvl,volTvl,volatility,correlation,priceData,drawdown,adjApr});
         }
 
         let pools = [...mockPools];
         let sortCol = null, sortAsc = true;
 
-        function renderTable() {
+        function render(){
             const tbody = document.getElementById("poolsBody");
-            if (!tbody) return; // Safety
-            tbody.innerHTML = "";
-            pools.forEach((pool, i) => {
+            tbody.innerHTML="";
+            pools.forEach((p,i)=>{
                 const row = document.createElement("tr");
-                const chartId = `chart-${i}`;
+                const id = `c${i}`;
                 row.innerHTML = `
-                    <td class="pair-cell">
-                        <span class="star">⭐</span> ${pool.pair}
-                        <canvas id="${chartId}" class="mini-chart"></canvas>
-                    </td>
-                    <td>${pool.age}</td>
-                    <td>$${pool.tvl.toLocaleString()}</td>
-                    <td>$${pool.fees24h.toLocaleString()}</td>
-                    <td>${pool.feeTvl.toFixed(2)}%</td>
-                    <td class="positive">${pool.adjApr}%</td>
-                    <td>${pool.volatility}</td>
-                    <td>${pool.correlation}</td>
-                    <td>${pool.rewardsTvl.toFixed(2)}%</td>
-                    <td>${pool.volTvl.toFixed(2)}%</td>
-                    <td><button class="simulate">Simulate</button></td>
-                `;
+                    <td class="pair-cell">Star ${p.pair} <canvas id="${id}" class="mini-chart"></canvas></td>
+                    <td>${p.age}</td>
+                    <td>$${p.tvl.toLocaleString()}</td>
+                    <td>$${p.fees.toLocaleString()}</td>
+                    <td>${p.feeTvl}%</td>
+                    <td class="positive">${p.adjApr}%</td>
+                    <td>${p.volatility}</td>
+                    <td>${p.correlation}</td>
+                    <td>${p.rewardsTvl}%</td>
+                    <td>${p.volTvl}%</td>
+                    <td><button class="simulate">Simulate</button></td>`;
                 tbody.appendChild(row);
 
-                // Chart with error handling
-                try {
-                    const ctx = document.getElementById(chartId)?.getContext("2d");
-                    if (!ctx) return;
-                    const lastPrice = pool.priceData[29];
-                    const firstPrice = pool.priceData[0];
-                    const color = pool.maxDrawdown > 0.3 ? "#ff4444" : (lastPrice > firstPrice ? "#00ff88" : "#ffaa00");
-                    new Chart(ctx, {
-                        type: "line",
-                        data: { 
-                            labels: Array(30).fill(""),
-                            datasets: [{ data: pool.priceData, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false }] 
-                        },
-                        options: { 
-                            scales: { x: { display: false }, y: { display: false } }, 
-                            plugins: { legend: { display: false } }, 
-                            animation: false,
-                            maintainAspectRatio: false
-                        }
+                // Safe chart creation
+                const canvas = document.getElementById(id);
+                if(canvas){
+                    const last = p.priceData[29];
+                    const first = p.priceData[0];
+                    const col = p.drawdown>0.3?"#ff4444":(last>first?"#00ff88":"#ffaa00");
+                    new Chart(canvas.getContext("2d"),{
+                        type:"line",
+                        data:{datasets:[{data:p.priceData,borderColor:col,borderWidth:2,tension:0.2,pointRadius:0,fill:false}]},
+                        options:{scales:{x:{display:false},y:{display:false}},plugins:{legend:{display:false}},animation:false}
                     });
-                } catch (e) { console.log("Chart skip:", e); }
+                }
             });
         }
 
-        function applyFilters() {
-            const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
-            const dex = dexSelect.value;
-            const chain = chainSelect.value;
-
-            pools = mockPools.filter(p =>
-                p.pair.toLowerCase().includes(search) &&
-                (dex === "All DEXs" || p.dex === dex) &&
-                (chain === "All Chains" || p.chain === chain)
+        function applyFilters(){
+            const s = (document.getElementById("searchInput").value||"").toLowerCase();
+            const d = dexSelect.value;
+            const c = chainSelect.value;
+            pools = mockPools.filter(p=>
+                p.pair.toLowerCase().includes(s) &&
+                (d==="All DEXs"||p.dex===d) &&
+                (c==="All Chains"||p.chain===c)
             );
-            renderTable();
+            render();
         }
 
-        // Sorting
-        function sortTable(colIndex) {
-            const cols = ["pair", "age", "tvl", "fees24h", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
-            const col = cols[colIndex];
-            if (!col) return;
-
-            if (sortCol === col) sortAsc = !sortAsc;
-            else { sortCol = col; sortAsc = true; }
-
-            pools.sort((a, b) => {
-                let x = a[col], y = b[col];
-                if (typeof x === "string") { x = x.toLowerCase(); y = y.toLowerCase(); }
-                return (parseFloat(x) - parseFloat(y) || x < y ? -1 : (x > y ? 1 : 0)) * (sortAsc ? 1 : -1);
-            });
-
-            document.querySelectorAll("th").forEach((th, i) => {
-                th.className = (i === colIndex) ? (sortAsc ? "sort-asc" : "sort-desc") : "";
-            });
-            renderTable();
-        }
-
-        // Listeners
-        document.getElementById("searchInput").addEventListener("input", applyFilters);
-        document.getElementById("timeFilter").addEventListener("change", applyFilters);
-
-        // Force init after load
-        window.addEventListener("load", () => {
-            applyFilters();
-        });
-    </script>
-</body>
-</html>
+        function sort
