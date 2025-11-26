@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discover - Unfiltered LPs</title>
-    <!-- Chart.js first so it's ready when we use it -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {font-family: Arial, sans-serif;background:#111;color:#eee;margin:0;padding:20px;}
@@ -17,12 +16,13 @@
         th {background:#333;cursor:pointer;user-select:none;}
         th:first-child, td:first-child {text-align:left;}
         .pair-cell {display:flex;align-items:center;gap:10px;}
-        .mini-chart {width:110px;height:36px;}
+        .mini-chart {width:110px;height:36px;background:#333;border:1px solid #444;}
         .star {cursor:pointer;font-size:18px;}
         .simulate {background:#0066ff;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
         .positive {color:#00ff88;}
-        .sort-asc::after {content:" up";color:#00ff88;}
-        .sort-desc::after {content:" down";color:#ff6666;}
+        .sort-asc::after {content:" ↑";color:#00ff88;}
+        .sort-desc::after {content:" ↓";color:#ff6666;}
+        .loading {color:#888;text-align:center;padding:20px;}
     </style>
 </head>
 <body>
@@ -56,95 +56,89 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="poolsBody"><tr><td colspan="11">Loading...</td></tr></tbody>
+        <tbody id="poolsBody"><tr class="loading"><td colspan="11">Loading... (Brave Shields? Click lion icon > Allow fingerprinting)</td></tr></tbody>
     </table>
 
     <script>
-        // DEX → Chain mapping (auto-select)
-        const dexChainMap = {
-            "Uniswap":"Ethereum","QuickSwap":"Polygon","PancakeSwap":"BNB Chain",
-            "SushiSwap":"Ethereum","Orca":"Solana","Raydium":"Solana",
-            "Velodrome":"Optimism","Aerodrome":"Base","HyperSwap":"HyperEVM",
-            "ProjectX":"HyperEVM","Shadow":"Sonic","Meteora":"Solana","Pump.fun":"Solana"
-        };
+        // DEX map
+        const dexChainMap = {"Uniswap":"Ethereum","QuickSwap":"Polygon","PancakeSwap":"BNB Chain","SushiSwap":"Ethereum","Orca":"Solana","Raydium":"Solana","Velodrome":"Optimism","Aerodrome":"Base","HyperSwap":"HyperEVM","ProjectX":"HyperEVM","Shadow":"Sonic","Meteora":"Solana","Pump.fun":"Solana"};
         const allDexs = Object.keys(dexChainMap);
         const allChains = [...new Set(Object.values(dexChainMap))].sort();
 
-        // Populate filters
+        // Dropdowns
         const dexSelect = document.getElementById("dexFilter");
         const chainSelect = document.getElementById("chainFilter");
         ["All DEXs", ...allDexs].forEach(d=>{let o=document.createElement("option");o.text=d;dexSelect.add(o);});
         ["All Chains", ...allChains].forEach(c=>{let o=document.createElement("option");o.text=c;chainSelect.add(o);});
 
-        // Auto chain
-        dexSelect.onchange = () => {
-            if (dexSelect.value!=="All DEXs") chainSelect.value = dexChainMap[dexSelect.value];
-            applyFilters();
-        };
+        dexSelect.onchange = () => {if(dexSelect.value!=="All DEXs") chainSelect.value = dexChainMap[dexSelect.value]; applyFilters();};
         chainSelect.onchange = applyFilters;
 
-        // Generate 60 realistic rows
-        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE"];
-        const mockPools = [];
-        for (let i=0;i<60;i++){
+        // Data gen (30 rows for speed)
+        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE"];
+        let pools = [];
+        for(let i=0;i<30;i++){
             const dex = allDexs[i%allDexs.length];
             const chain = dexChainMap[dex];
             const a = tokens[i%tokens.length];
-            const b = tokens[(i+3)%tokens.length];
+            const b = tokens[(i+2)%tokens.length];
             const age = dex==="Pump.fun"? `${Math.floor(Math.random()*10)+1}h` : `${Math.floor(Math.random()*365)+1}d`;
-            const tvl = Math.round((Math.random()*14000000 + (dex==="Pump.fun"?3000:60000)));
-            const fees = Math.round((Math.random()*70000 + (dex==="Pump.fun"?150:800)));
+            const tvl = Math.round(Math.random()*10000000 + (dex==="Pump.fun"?2000:40000));
+            const fees = Math.round(Math.random()*50000 + (dex==="Pump.fun"?100:500));
             const feeTvl = Number(((fees/tvl)*100).toFixed(3));
-            const rewardsTvl = dex==="Pump.fun"?0:Number((Math.random()*25).toFixed(2));
-            const volTvl = Number((Math.random()*250 + 30).toFixed(2));
-            const volatility = Number((Math.random()*70 + 10).toFixed(2));
-            const correlation = Number((Math.random()*80 + 10).toFixed(2));
+            const rewardsTvl = dex==="Pump.fun"?0:Number((Math.random()*20).toFixed(2));
+            const volTvl = Number((Math.random()*200 + 20).toFixed(2));
+            const volatility = Number((Math.random()*60 + 10).toFixed(2));
+            const correlation = Number((Math.random()*70 + 10).toFixed(2));
 
-            const start = 50 + Math.random()*500;
+            const start = 50 + Math.random()*300;
             const trend = i%4===0?-1:(i%4===1?1:0);
-            const priceData = Array.from({length:30},(_,j)=>Math.max(0.1,start + j*trend*(Math.random()*3) + (Math.random()*20-10)));
+            const priceData = Array.from({length:20},(_,j)=>Math.max(0.1,start + j*trend*(Math.random()*2) + (Math.random()*15-7.5)));
             const maxP = Math.max(...priceData);
             const minP = Math.min(...priceData);
             const drawdown = (maxP-minP)/maxP;
             const adjApr = Number((feeTvl*(1-drawdown)).toFixed(2));
 
-            mockPools.push({pair:`${a}/${b}`,dex,chain,age,tvl,fees,feeTvl,rewardsTvl,volTvl,volatility,correlation,priceData,drawdown,adjApr});
+            pools.push({pair:`${a}/${b}`,dex,chain,age,tvl,fees,feeTvl,rewardsTvl,volTvl,volatility,correlation,priceData,drawdown,adjApr});
         }
-
-        let pools = [...mockPools];
-        let sortCol = null, sortAsc = true;
 
         function render(){
             const tbody = document.getElementById("poolsBody");
-            tbody.innerHTML="";
+            tbody.innerHTML = "";
             pools.forEach((p,i)=>{
                 const row = document.createElement("tr");
                 const id = `c${i}`;
                 row.innerHTML = `
-                    <td class="pair-cell">Star ${p.pair} <canvas id="${id}" class="mini-chart"></canvas></td>
+                    <td class="pair-cell"><span class="star">⭐</span> ${p.pair} <canvas id="${id}" class="mini-chart"></canvas></td>
                     <td>${p.age}</td>
                     <td>$${p.tvl.toLocaleString()}</td>
                     <td>$${p.fees.toLocaleString()}</td>
-                    <td>${p.feeTvl}%</td>
+                    <td>${p.feeTvl.toFixed(2)}%</td>
                     <td class="positive">${p.adjApr}%</td>
-                    <td>${p.volatility}</td>
-                    <td>${p.correlation}</td>
-                    <td>${p.rewardsTvl}%</td>
-                    <td>${p.volTvl}%</td>
+                    <td>${p.volatility.toFixed(2)}</td>
+                    <td>${p.correlation.toFixed(2)}</td>
+                    <td>${p.rewardsTvl.toFixed(2)}%</td>
+                    <td>${p.volTvl.toFixed(2)}%</td>
                     <td><button class="simulate">Simulate</button></td>`;
                 tbody.appendChild(row);
 
-                // Safe chart creation
+                // Chart with Brave fix
                 const canvas = document.getElementById(id);
-                if(canvas){
-                    const last = p.priceData[29];
-                    const first = p.priceData[0];
-                    const col = p.drawdown>0.3?"#ff4444":(last>first?"#00ff88":"#ffaa00");
-                    new Chart(canvas.getContext("2d"),{
-                        type:"line",
-                        data:{datasets:[{data:p.priceData,borderColor:col,borderWidth:2,tension:0.2,pointRadius:0,fill:false}]},
-                        options:{scales:{x:{display:false},y:{display:false}},plugins:{legend:{display:false}},animation:false}
-                    });
+                if(window.Chart && canvas){
+                    try{
+                        const ctx = canvas.getContext("2d", {willReadFrequently: false});
+                        const last = p.priceData[p.priceData.length-1];
+                        const first = p.priceData[0];
+                        const col = p.drawdown>0.3?"#ff4444":(last>first?"#00ff88":"#ffaa00");
+                        new window.Chart(ctx,{
+                            type:"line",
+                            data:{datasets:[{data:p.priceData,borderColor:col,borderWidth:2,tension:0.2,pointRadius:0,fill:false}]},
+                            options:{scales:{x:{display:false},y:{display:false}},plugins:{legend:{display:false}},animation:false,maintainAspectRatio:false}
+                        });
+                    }catch(e){canvas.textContent = "Chart error"; canvas.style.color = "#ff6666";}
+                } else {
+                    canvas.textContent = "No Chart.js";
+                    canvas.style.color = "#888";
                 }
             });
         }
@@ -153,12 +147,7 @@
             const s = (document.getElementById("searchInput").value||"").toLowerCase();
             const d = dexSelect.value;
             const c = chainSelect.value;
-            pools = mockPools.filter(p=>
+            pools = pools.filter(p=>
                 p.pair.toLowerCase().includes(s) &&
                 (d==="All DEXs"||p.dex===d) &&
-                (c==="All Chains"||p.chain===c)
-            );
-            render();
-        }
-
-        function sort
+                (c==="All Chains"||p
