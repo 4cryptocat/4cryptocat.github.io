@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discover - Unfiltered LPs (Fixed)</title>
+    <title>Discover - Unfiltered LPs</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
@@ -22,8 +22,8 @@
         .star { cursor: pointer; font-size: 18px; }
         .simulate { background: #0066ff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .positive { color: #00ff88; }
-        .sort-asc:after { content: " ↑"; color: #00ff88; }
-        .sort-desc:after { content: " ↓"; color: #ff6666; }
+        .sort-asc::after { content: " ↑"; color: #00ff88; }
+        .sort-desc::after { content: " ↓"; color: #ff6666; }
     </style>
 </head>
 <body>
@@ -54,21 +54,20 @@
                 <th onclick="sortTable(7)">Correlation</th>
                 <th onclick="sortTable(8)">Rewards/TVL</th>
                 <th onclick="sortTable(9)">Volume/TVL</th>
-                <th onclick="sortTable(10)">Actions</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="poolsBody"></tbody>
     </table>
 
     <script>
-        // DEX → Chain mapping (auto-select chain when DEX is chosen)
+        // DEX → Chain mapping
         const dexChainMap = {
             "Uniswap": "Ethereum", "QuickSwap": "Polygon", "PancakeSwap": "BNB Chain",
             "SushiSwap": "Ethereum", "Orca": "Solana", "Raydium": "Solana",
             "Velodrome": "Optimism", "Aerodrome": "Base", "HyperSwap": "HyperEVM",
             "ProjectX": "HyperEVM", "Shadow": "Sonic", "Meteora": "Solana", "Pump.fun": "Solana"
         };
-
         const allDexs = Object.keys(dexChainMap);
         const allChains = [...new Set(Object.values(dexChainMap))].sort();
 
@@ -76,17 +75,13 @@
         const dexSelect = document.getElementById("dexFilter");
         const chainSelect = document.getElementById("chainFilter");
         ["All DEXs", ...allDexs].forEach(d => { 
-            const o = document.createElement("option"); 
-            o.text = d; 
-            dexSelect.add(o); 
+            const o = document.createElement("option"); o.text = d; dexSelect.add(o); 
         });
         ["All Chains", ...allChains].forEach(c => { 
-            const o = document.createElement("option"); 
-            o.text = c; 
-            chainSelect.add(o); 
+            const o = document.createElement("option"); o.text = c; chainSelect.add(o); 
         });
 
-        // Auto-select chain when DEX changes
+        // Auto-select chain
         dexSelect.addEventListener("change", () => {
             const selectedDex = dexSelect.value;
             if (selectedDex !== "All DEXs" && dexChainMap[selectedDex]) {
@@ -96,25 +91,24 @@
         });
         chainSelect.addEventListener("change", applyFilters);
 
-        // Mock data — 120+ real-looking rows
+        // Mock data (120 rows)
         const basePairs = ["USDC", "USDT", "SOL", "ETH", "WIF", "BONK", "JUP", "MATIC", "BNB", "PEPE", "SHIB", "DOGE", "RAY", "ORCA"];
         const mockPools = [];
-
         for (let i = 0; i < 120; i++) {
             const dex = allDexs[i % allDexs.length];
             const chain = dexChainMap[dex];
             const tokenA = basePairs[i % basePairs.length];
             const tokenB = basePairs[(i + 3) % basePairs.length];
-            const ageDays = dex === "Pump.fun" ? Math.floor(Math.random() * 12) + "h" : Math.floor(Math.random() * 400) + "d";
+            const age = dex === "Pump.fun" ? `${Math.floor(Math.random() * 12)}h` : `${Math.floor(Math.random() * 400)}d`;
             const tvl = Math.floor(Math.random() * 15000000) + (dex === "Pump.fun" ? 5000 : 50000);
             const fees24h = Math.floor(Math.random() * 80000) + (dex === "Pump.fun" ? 200 : 1000);
             const feeTvl = (fees24h / tvl) * 100;
-            const rewardsTvl = dex === "Pump.fun" ? 0 : (Math.random() * 0.3 * 100).toFixed(2);
-            const volTvl = (Math.random() * 3 + 0.2 * 100).toFixed(2);
-            const volatility = (Math.random() * 0.8 + 0.1).toFixed(2);
-            const correlation = (Math.random() * 0.8 + 0.1).toFixed(2);
+            const rewardsTvl = dex === "Pump.fun" ? 0 : (Math.random() * 30);
+            const volTvl = (Math.random() * 300 + 20);
+            const volatility = (Math.random() * 80 + 10) / 100;
+            const correlation = (Math.random() * 80 + 10) / 100;
 
-            // Price chart simulation
+            // Price data for chart
             const start = 100 + Math.random() * 400;
             const trend = i % 4 === 0 ? -1 : (i % 4 === 1 ? 1 : 0);
             const priceData = Array.from({length: 30}, (_, j) => {
@@ -125,18 +119,18 @@
             const maxPrice = Math.max(...priceData);
             const minPrice = Math.min(...priceData);
             const maxDrawdown = (maxPrice - minPrice) / maxPrice;
-            const adjApr = Math.max(0, feeTvl * (1 - maxDrawdown)).toFixed(2);
+            const adjApr = Math.max(0, feeTvl * (1 - maxDrawdown));
 
             mockPools.push({
                 pair: `${tokenA}/${tokenB}`,
                 dex, chain,
-                age: ageDays,
+                age,
                 tvl, fees24h, feeTvl,
-                rewardsTvl: parseFloat(rewardsTvl),
-                volTvl: parseFloat(volTvl),
-                volatility, correlation,
+                rewardsTvl, volTvl,
+                volatility: volatility.toFixed(2),
+                correlation: correlation.toFixed(2),
                 priceData, maxDrawdown,
-                adjApr: parseFloat(adjApr)
+                adjApr: adjApr.toFixed(2)
             });
         }
 
@@ -145,6 +139,7 @@
 
         function renderTable() {
             const tbody = document.getElementById("poolsBody");
+            if (!tbody) return; // Safety
             tbody.innerHTML = "";
             pools.forEach((pool, i) => {
                 const row = document.createElement("tr");
@@ -167,29 +162,32 @@
                 `;
                 tbody.appendChild(row);
 
-                // Mini chart - fixed variable reference
-                const ctx = document.getElementById(chartId).getContext("2d");
-                const lastPrice = pool.priceData[29];
-                const firstPrice = pool.priceData[0];
-                const color = pool.maxDrawdown > 0.3 ? "#ff4444" : (lastPrice > firstPrice ? "#00ff88" : "#ffaa00");
-                new Chart(ctx, {
-                    type: "line",
-                    data: { 
-                        labels: Array(30).fill(""),
-                        datasets: [{ data: pool.priceData, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false }] 
-                    },
-                    options: { 
-                        scales: { x: { display: false }, y: { display: false } }, 
-                        plugins: { legend: { display: false } }, 
-                        animation: false,
-                        maintainAspectRatio: false
-                    }
-                });
+                // Chart with error handling
+                try {
+                    const ctx = document.getElementById(chartId)?.getContext("2d");
+                    if (!ctx) return;
+                    const lastPrice = pool.priceData[29];
+                    const firstPrice = pool.priceData[0];
+                    const color = pool.maxDrawdown > 0.3 ? "#ff4444" : (lastPrice > firstPrice ? "#00ff88" : "#ffaa00");
+                    new Chart(ctx, {
+                        type: "line",
+                        data: { 
+                            labels: Array(30).fill(""),
+                            datasets: [{ data: pool.priceData, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false }] 
+                        },
+                        options: { 
+                            scales: { x: { display: false }, y: { display: false } }, 
+                            plugins: { legend: { display: false } }, 
+                            animation: false,
+                            maintainAspectRatio: false
+                        }
+                    });
+                } catch (e) { console.log("Chart skip:", e); }
             });
         }
 
         function applyFilters() {
-            const search = document.getElementById("searchInput").value.toLowerCase();
+            const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
             const dex = dexSelect.value;
             const chain = chainSelect.value;
 
@@ -201,9 +199,9 @@
             renderTable();
         }
 
-        // Sorting function
+        // Sorting
         function sortTable(colIndex) {
-            const cols = ["pair", "age", "tvl", "fees24h", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl", null];
+            const cols = ["pair", "age", "tvl", "fees24h", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
             const col = cols[colIndex];
             if (!col) return;
 
@@ -213,10 +211,9 @@
             pools.sort((a, b) => {
                 let x = a[col], y = b[col];
                 if (typeof x === "string") { x = x.toLowerCase(); y = y.toLowerCase(); }
-                return (x < y ? -1 : (x > y ? 1 : 0)) * (sortAsc ? 1 : -1);
+                return (parseFloat(x) - parseFloat(y) || x < y ? -1 : (x > y ? 1 : 0)) * (sortAsc ? 1 : -1);
             });
 
-            // Update sort indicators
             document.querySelectorAll("th").forEach((th, i) => {
                 th.className = (i === colIndex) ? (sortAsc ? "sort-asc" : "sort-desc") : "";
             });
@@ -227,8 +224,10 @@
         document.getElementById("searchInput").addEventListener("input", applyFilters);
         document.getElementById("timeFilter").addEventListener("change", applyFilters);
 
-        // Initial render
-        applyFilters();
+        // Force init after load
+        window.addEventListener("load", () => {
+            applyFilters();
+        });
     </script>
 </body>
 </html>
