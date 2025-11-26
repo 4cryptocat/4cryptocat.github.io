@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discover - Unfiltered Liquidity Pools</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px;}
-        .header {display:flex;flex-wrap:wrap;gap:15px;align-items:center;margin-bottom:20px;}
-        h1 {margin:0;font-size:24px;}
-        .search-bar {padding:10px;width:300px;background:#333;border:none;border-radius:4px;color:white;}
-        .filters select {padding:8px;background:#333;color:white;border:1px solid #555;border-radius:4px;}
-        table {width:100%;border-collapse:collapse;background:#222;font-size:14px;overflow-x:auto;display:block;white-space:nowrap;}
-        th,td {padding:10px 12px;border-bottom:1px solid #444;text-align:right;}
-        th {background:#333;cursor:pointer;user-select:none;}
-        th:first-child,td:first-child {text-align:left;}
-        .pair-cell {display:flex;align-items:center;gap:10px;}
-        .mini-chart {width:110px;height:36px;background:#222;border:1px solid #444;border-radius:2px;}
-        .star {cursor:pointer;font-size:18px;}
-        .simulate {background:#0066ff;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;}
-        .positive {color:#00ff88;}
-        .sort-asc::after {content:" up";color:#00ff88;}
-        .sort-desc::after {content:" down";color:#ff6666;}
+        body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
+        .header { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 24px; }
+        .search-bar { padding: 10px; width: 300px; background: #333; border: none; border-radius: 4px; color: white; }
+        .filters select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; background: #222; font-size: 14px; overflow-x: auto; display: block; white-space: nowrap; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #444; text-align: right; }
+        th { background: #333; cursor: pointer; user-select: none; }
+        th:first-child, td:first-child { text-align: left; }
+        .pair-cell { display: flex; align-items: center; gap: 10px; }
+        .mini-chart { width: 110px; height: 36px; background: #222; border: 1px solid #444; border-radius: 2px; position: relative; overflow: hidden; }
+        .star { cursor: pointer; font-size: 18px; }
+        .simulate { background: #0066ff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .positive { color: #00ff88; }
+        .sort-asc::after { content: " ↑"; color: #00ff88; }
+        .sort-desc::after { content: " ↓"; color: #ff6666; }
+        .loading { color: #888; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -55,129 +55,147 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="poolsBody"></tbody>
+        <tbody id="poolsBody"><tr class="loading"><td colspan="11">Loading pools...</td></tr></tbody>
     </table>
 
-<script>
-// DEXs ordered by REAL DeFiLlama TVL (Nov 26 2025)
-const dexList = [
-    "Uniswap", "PancakeSwap", "Raydium", "Orca", "SushiSwap",
-    "Aerodrome", "Velodrome", "QuickSwap", "Meteora",
-    "Pump.fun", "HyperSwap", "ProjectX", "Shadow"
-];
-const dexChainMap = {
-    "Uniswap":"Ethereum","PancakeSwap":"BNB Chain","Raydium":"Solana","Orca":"Solana","SushiSwap":"Ethereum",
-    "Aerodrome":"Base","Velodrome":"Optimism","QuickSwap":"Polygon","Meteora":"Solana",
-    "Pump.fun":"Solana","HyperSwap":"HyperEVM","ProjectX":"HyperEVM","Shadow":"Sonic"
-};
+    <script>
+        // DEXs ordered by DeFiLlama TVL (Nov 26, 2025)
+        const dexList = [
+            "Uniswap", "PancakeSwap", "Raydium", "Orca", "SushiSwap",
+            "Aerodrome", "Velodrome", "QuickSwap", "Meteora",
+            "Pump.fun", "HyperSwap", "ProjectX", "Shadow"
+        ];
+        const dexChainMap = {
+            "Uniswap":"Ethereum","PancakeSwap":"BNB Chain","Raydium":"Solana","Orca":"Solana","SushiSwap":"Ethereum",
+            "Aerodrome":"Base","Velodrome":"Optimism","QuickSwap":"Polygon","Meteora":"Solana",
+            "Pump.fun":"Solana","HyperSwap":"HyperEVM","ProjectX":"HyperEVM","Shadow":"Sonic"
+        };
 
-// Fill DEX dropdown (highest TVL first, Uniswap default)
-const dexSelect = document.getElementById("dexFilter");
-dexList.forEach(dex => dexSelect.add(new Option(dex, dex)));
-dexSelect.value = "Uniswap";
+        // Fill DEX dropdown (no "All")
+        const dexSelect = document.getElementById("dexFilter");
+        dexList.forEach(dex => dexSelect.add(new Option(dex, dex)));
+        dexSelect.value = "Uniswap"; // Default
 
-// Fill Chain dropdown
-const chains = [...new Set(Object.values(dexChainMap))].sort();
-const chainSelect = document.getElementById("chainFilter");
-chains.forEach(c => chainSelect.add(new Option(c, c)));
+        // Fill Chain dropdown
+        const chains = [...new Set(Object.values(dexChainMap))].sort();
+        const chainSelect = document.getElementById("chainFilter");
+        chains.forEach(c => chainSelect.add(new Option(c, c)));
 
-// Auto-select chain when DEX changes
-dexSelect.onchange = () => {
-    chainSelect.value = dexChainMap[dexSelect.value];
-    applyFilters();
-};
-chainSelect.onchange = applyFilters;
+        // Auto-chain select
+        dexSelect.onchange = function() {
+            chainSelect.value = dexChainMap[this.value];
+            applyFilters();
+        };
+        chainSelect.onchange = applyFilters;
 
-// Generate ~16 pools per DEX → plenty of rows every time
-const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE"];
-let masterPools = [];
-dexList.forEach(dex => {
-    for(let i=0; i<16; i++){
-        const a = tokens[Math.floor(Math.random()*tokens.length)];
-        const b = tokens[Math.floor(Math.random()*tokens.length)];
-        const tvl = Math.round(Math.random()*12e6 + 5e4);
-        const fees = Math.round(Math.random()*8e4 + 500);
-        const feeTvl = Number(((fees/tvl)*100).toFixed(3));
-        const trend = Math.random()<0.3?-1:(Math.random()<0.6?1:0);
-        const priceData = Array.from({length:30},(_,j)=>100+Math.random()*300+j*trend*3+Math.random()*20-10);
-        const drawdown = (Math.max(...priceData)-Math.min(...priceData))/Math.max(...priceData);
-        const adjApr = Number((feeTvl*(1-drawdown)).toFixed(2));
-        const age = dex==="Pump.fun"? `${Math.floor(Math.random()*10)+1}h` : `${Math.floor(Math.random()*300)+10}d`;
+        // Generate 16 pools per DEX (208 total)
+        const tokens = ["USDC","USDT","SOL","ETH","WIF","BONK","JUP","MATIC","BNB","PEPE","SHIB","DOGE"];
+        let masterPools = [];
+        dexList.forEach(dex => {
+            for(let i=0; i<16; i++){
+                const a = tokens[Math.floor(Math.random()*tokens.length)];
+                const b = tokens[Math.floor(Math.random()*tokens.length)];
+                const tvl = Math.round(Math.random()*15000000 + 50000);
+                const fees = Math.round(Math.random()*80000 + 500);
+                const feeTvl = Number(((fees/tvl)*100).toFixed(3));
+                const trend = Math.random() < 0.3 ? -1 : Math.random() < 0.6 ? 1 : 0;
+                const priceData = Array.from({length:30}, (_, j) => Math.max(0.1, 100 + Math.random()*300 + j*trend*3 + Math.random()*20-10));
+                const maxP = Math.max(...priceData), minP = Math.min(...priceData);
+                const drawdown = (maxP - minP) / maxP;
+                const adjApr = Number((feeTvl * (1 - drawdown)).toFixed(2));
+                const volatility = (Math.random()*0.7 + 0.1).toFixed(2);
+                const correlation = (Math.random()*0.8 + 0.1).toFixed(2);
+                const rewardsTvl = (Math.random()*25).toFixed(2);
+                const volTvl = (Math.random()*250 + 20).toFixed(2);
+                const age = dex === "Pump.fun" ? `${Math.floor(Math.random()*12)+1}h` : `${Math.floor(Math.random()*365)+1}d`;
 
-        masterPools.push({
-            pair:`${a}/${b}`, dex, chain:dexChainMap[dex], age, tvl, fees, feeTvl, adjApr,
-            volatility:(Math.random()*0.7+0.1).toFixed(2),
-            correlation:(Math.random()*0.8+0.1).toFixed(2),
-            rewardsTvl:(Math.random()*25).toFixed(2),
-            volTvl:(Math.random()*250+20).toFixed(2),
-            priceData, trend
+                masterPools.push({
+                    pair: `${a}/${b}`,
+                    dex,
+                    chain: dexChainMap[dex],
+                    age,
+                    tvl,
+                    fees,
+                    feeTvl,
+                    adjApr,
+                    volatility,
+                    correlation,
+                    rewardsTvl,
+                    volTvl,
+                    priceData,
+                    trend
+                });
+            }
         });
-    }
-});
-let pools = [...masterPools];
+        let pools = [...masterPools];
 
-// Draw mini-chart (SVG fallback = works on Brave with Shields ON)
-function drawChart(canvas, data, trend){
-    const color = trend===-1?"#ff4444":trend===1?"#00ff88":"#ffaa00";
-    const min=Math.min(...data), max=Math.max(...data);
-    const pts = data.map((v,i)=>`${i*110/29},${36-(v-min)/(max-min)*34}`).join(" ");
-    canvas.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}"/></svg>`;
-}
+        // Pure SVG mini-chart (no canvas, always works)
+        function drawChart(element, data, trend) {
+            const color = trend === -1 ? "#ff4444" : trend === 1 ? "#00ff88" : "#ffaa00";
+            const min = Math.min(...data), max = Math.max(...data);
+            const points = data.map((v, i) => `${i * 110 / 29},${36 - (v - min) / (max - min) * 34}`).join(" ");
+            element.innerHTML = `<svg width="110" height="36"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}"/></svg>`;
+        }
 
-function render(){
-    const tbody = document.getElementById("poolsBody");
-    tbody.innerHTML="";
-    pools.forEach(p=>{
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td class="pair-cell"><span class="star">Star</span> ${p.pair} <canvas class="mini-chart"></canvas></td>
-            <td>${p.age}</td>
-            <td>$${p.tvl.toLocaleString()}</td>
-            <td>$${p.fees.toLocaleString()}</td>
-            <td>${p.feeTvl.toFixed(2)}%</td>
-            <td class="positive">${p.adjApr}%</td>
-            <td>${p.volatility}</td>
-            <td>${p.correlation}</td>
-            <td>${p.rewardsTvl}%</td>
-            <td>${p.volTvl}%</td>
-            <td><button class="simulate">Simulate</button></td>`;
-        tbody.appendChild(row);
-        drawChart(row.querySelector(".mini-chart"), p.priceData, p.trend);
-    });
-}
+        function render() {
+            const tbody = document.getElementById("poolsBody");
+            tbody.innerHTML = "";
+            pools.forEach((p, i) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="pair-cell"><span class="star">⭐</span> ${p.pair} <div class="mini-chart"></div></td>
+                    <td>${p.age}</td>
+                    <td>$${p.tvl.toLocaleString()}</td>
+                    <td>$${p.fees.toLocaleString()}</td>
+                    <td>${p.feeTvl.toFixed(2)}%</td>
+                    <td class="positive">${p.adjApr}%</td>
+                    <td>${p.volatility}</td>
+                    <td>${p.correlation}</td>
+                    <td>${p.rewardsTvl}%</td>
+                    <td>${p.volTvl}%</td>
+                    <td><button class="simulate">Simulate</button></td>`;
+                tbody.appendChild(row);
+                drawChart(row.querySelector(".mini-chart"), p.priceData, p.trend);
+            });
+        }
 
-function applyFilters(){
-    const search = document.getElementById("searchInput").value.toLowerCase();
-    const selectedDex = dexSelect.value;
-    pools = masterPools.filter(p =>
-        p.pair.toLowerCase().includes(search) &&
-        p.dex === selectedDex
-    );
-    render();
-}
+        function applyFilters() {
+            const s = document.getElementById("searchInput").value.toLowerCase();
+            const d = dexSelect.value;
+            const c = chainSelect.value;
+            pools = masterPools.filter(p =>
+                p.pair.toLowerCase().includes(s) &&
+                p.dex === d &&
+                p.chain === c
+            );
+            render();
+        }
 
-// Sorting
-let sortState = {};
-function sortTable(col){
-    const keys = ["pair","age","tvl","fees","feeTvl","adjApr","volatility","correlation","rewardsTvl","volTvl"];
-    const key = keys[col];
-    sortState[col] = sortState[col] === "asc" ? "desc" : "asc";
-    pools.sort((a,b)=>{
-        let x = a[key], y = b[key];
-        if(typeof x==="string") x=x.toLowerCase(), y=y.toLowerCase();
-        else x=+x||0, y=+y||0;
-        return sortState[col]==="asc" ? (x>y?1:x<y?-1:0) : (x<y?1:x>y?-1:0);
-    });
-    document.querySelectorAll("th").forEach((th,i)=>th.className=i===col?(sortState[col]==="asc"?"sort-asc":"sort-desc"):"");
-    render();
-}
+        let sortDir = {};
+        function sortTable(col) {
+            const keys = ["pair", "age", "tvl", "fees", "feeTvl", "adjApr", "volatility", "correlation", "rewardsTvl", "volTvl"];
+            const key = keys[col];
+            if (!key) return;
+            const dir = sortDir[col] === 'asc' ? 'desc' : 'asc';
+            sortDir[col] = dir;
+            pools.sort((a, b) => {
+                let x = a[key], y = b[key];
+                if (typeof x === "string") x = x.toLowerCase(), y = y.toLowerCase();
+                else x = parseFloat(x) || 0, y = parseFloat(y) || 0;
+                return dir === 'asc' ? (x > y ? 1 : x < y ? -1 : 0) : (x < y ? 1 : x > y ? -1 : 0);
+            });
+            document.querySelectorAll("th").forEach((th, i) => {
+                th.className = i === col ? (dir === 'asc' ? "sort-asc" : "sort-desc") : "";
+            });
+            render();
+        }
 
-// Listeners
-document.getElementById("searchInput").oninput = applyFilters;
-document.getElementById("timeFilter").onchange = applyFilters;
+        // Listeners
+        document.getElementById("searchInput").oninput = applyFilters;
+        document.getElementById("timeFilter").onchange = applyFilters;
 
-// Start
-document.addEventListener("DOMContentLoaded", () => setTimeout(applyFilters, 200));
-</script>
+        // Start
+        document.addEventListener("DOMContentLoaded", () => setTimeout(applyFilters, 100));
+    </script>
 </body>
 </html>
