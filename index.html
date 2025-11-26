@@ -74,25 +74,22 @@
     </div>
 
     <script>
-        // GeckoTerminal network IDs (for API)
-        const networkIds = {"Ethereum":"eth","BNB Chain":"bsc","Solana":"solana","Base":"base","Optimism":"op_mainnet","Polygon":"polygon","HyperEVM":"hyperliquid","Sonic":"sonic"};
-
-        // DEX config (TVL order, logos, versions, pool URLs)
+        // DEX config (TVL order, logos, pool URLs)
         const dexConfig = [
             {name: "All DEXs", chain: "All Chains"},
-            {name: "Uniswap", chain: "Ethereum", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRkY4MDAiLz4KPC9zdmc+Cg==", poolUrl: "https://app.uniswap.org/explore/pools/ethereum/"},
-            {name: "PancakeSwap", chain: "BNB Chain", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://pancakeswap.finance/info/pool/"},
-            {name: "Raydium", chain: "Solana", version: "Concentrated", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjU1MDAiLz4KPC9zdmc+Cg==", poolUrl: "https://raydium.io/liquidity/"},
-            {name: "Orca", chain: "Solana", version: "Whirl", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjQ0MDAiLz4KPC9zdmc+Cg==", poolUrl: "https://www.orca.so/pool/"},
-            {name: "SushiSwap", chain: "Ethereum", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjI1MDAiLz4KPC9zdmc+Cg==", poolUrl: "https://www.sushi.com/pool/"},
-            {name: "Aerodrome", chain: "Base", version: "Slipstream", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://aerodrome.finance/pools/"},
-            {name: "Velodrome", chain: "Optimism", version: "v2", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRkZGRjAiLz4KPC9zdmc+Cg==", poolUrl: "https://app.velodrome.finance/liquidity/"},
-            {name: "QuickSwap", chain: "Polygon", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://quickswap.exchange/#/pools/"},
-            {name: "Meteora", chain: "Solana", version: "DLMM", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjQ0MDAiLz4KPC9zdmc+Cg==", poolUrl: "https://app.meteora.ag/pools/"},
-            {name: "Pump.fun", chain: "Solana", version: "Launchpad", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwMDAiLz4KPC9zdmc+Cg==", poolUrl: "https://pump.fun/"},
-            {name: "HyperSwap", chain: "HyperEVM", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://app.hyperswap.exchange/pools/"},
-            {name: "ProjectX", chain: "HyperEVM", version: "All", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://projectx.exchange/pools/"},
-            {name: "Shadow", chain: "Sonic", version: "CLMM", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGRjAwRkYiLz4KPC9zdmc+Cg==", poolUrl: "https://shadow.exchange/pools/"}
+            {name: "Uniswap", chain: "Ethereum", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkZGMzgwMCIvPgo8L3N2Zz4K", poolUrl: "https://app.uniswap.org/explore/pools/ethereum/"},
+            {name: "PancakeSwap", chain: "BNB Chain", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkZGRkZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://pancakeswap.finance/info/pool/"},
+            {name: "Raydium", chain: "Solana", version: "Concentrated", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkY1NTAwIi8+Cjwvc3ZnPgo=", poolUrl: "https://raydium.io/liquidity-pools/"},
+            {name: "Orca", chain: "Solana", version: "Whirl", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkY0NDAwIi8+Cjwvc3ZnPgo=", poolUrl: "https://www.orca.so/pools"},
+            {name: "SushiSwap", chain: "Ethereum", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYyNTAwIi8+Cjwvc3ZnPgo=", poolUrl: "https://www.sushi.com/pools"},
+            {name: "Aerodrome", chain: "Base", version: "Slipstream", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMEZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://aerodrome.finance/pools"},
+            {name: "Velodrome", chain: "Optimism", version: "v2", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkZGRkYwIi8+Cjwvc3ZnPgo=", poolUrl: "https://app.velodrome.finance/liquidity"},
+            {name: "QuickSwap", chain: "Polygon", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMEZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://quickswap.exchange/#/pools"},
+            {name: "Meteora", chain: "Solana", version: "DLMM", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkY0NDAwIi8+Cjwvc3ZnPgo=", poolUrl: "https://app.meteora.ag/pools"},
+            {name: "Pump.fun", chain: "Solana", version: "Launchpad", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMDAwIi8+Cjwvc3ZnPgo=", poolUrl: "https://pump.fun/"},
+            {name: "HyperSwap", chain: "HyperEVM", version: "v3", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMEZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://app.hyperswap.exchange/pools/"},
+            {name: "ProjectX", chain: "HyperEVM", version: "All", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMEZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://projectx.exchange/pools/"},
+            {name: "Shadow", chain: "Sonic", version: "CLMM", logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjRkYwMEZGIi8+Cjwvc3ZnPgo=", poolUrl: "https://shadow.exchange/pools/"}
         ];
 
         // Fill dropdowns
@@ -111,16 +108,25 @@
         };
         chainSelect.onchange = applyFilters;
 
-        // Generate mock pools (realistic, chain-matched)
-        const tokens = {"Ethereum": ["USDC","USDT","WETH","DAI","WBTC"], "BNB Chain": ["USDT","BUSD","BNB","CAKE"], "Solana": ["USDC","USDT","SOL","RAY","ORCA"], "Base": ["USDC","WETH","USDT"], "Optimism": ["USDC","WETH","OP"], "Polygon": ["USDC","MATIC","WMATIC"], "HyperEVM": ["USDC","HYPE"], "Sonic": ["USDC","SHDW"]};
+        // Generate chain-matched mock pools
+        const chainTokens = {
+            "Ethereum": ["USDC","USDT","WETH","DAI","WBTC"],
+            "BNB Chain": ["USDT","BUSD","BNB","CAKE"],
+            "Solana": ["USDC","USDT","SOL","RAY","ORCA"],
+            "Base": ["USDC","WETH","USDT"],
+            "Optimism": ["USDC","WETH","OP"],
+            "Polygon": ["USDC","MATIC","WMATIC"],
+            "HyperEVM": ["USDC","HYPE"],
+            "Sonic": ["USDC","SHDW"]
+        };
         let masterPools = [];
         dexConfig.slice(1).forEach(dex => {
-            const chainTokens = tokens[dex.chain] || tokens["Ethereum"];
+            const tokensForChain = chainTokens[dex.chain] || chainTokens["Ethereum"];
             for(let i=0; i<16; i++){
-                const a = chainTokens[Math.floor(Math.random()*chainTokens.length)];
-                const b = chainTokens[Math.floor(Math.random()*chainTokens.length)];
+                const a = tokensForChain[Math.floor(Math.random()*tokensForChain.length)];
+                const b = tokensForChain[Math.floor(Math.random()*tokensForChain.length)];
                 if(a === b) continue;
-                const poolAddress = `0x${Math.random().toString(16).substr(2,40)}`; // Mock real address
+                const poolAddress = `0x${Math.random().toString(16).substr(2,40)}`;
                 const tvl = Math.round(Math.random()*15e6 + 5e4);
                 const fees = Math.round(Math.random()*8e4 + 500);
                 const feeTvl = Number(((fees/tvl)*100).toFixed(3));
@@ -166,7 +172,7 @@
                 row.innerHTML = `
                     <td class="pair-cell">
                         <div class="dex-info">
-                            <img src="${p.logo}" class="dex-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCAxOCIgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iOSIgeT0iOSIgcj0iOSIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz48L3N2Zz4='">
+                            <img src="${p.logo}" class="dex-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCA4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iOSIgeT0iNDAiIHI9IjEwIiBmaWxsPSIjNDQ0Ii8+Cjwvc3ZnPgo='">
                             <span>${p.version} • ${p.chain}</span>
                         </div>
                         <a href="${p.poolUrl}" target="_blank" class="pair-link" rel="noopener">${p.pair}</a>
