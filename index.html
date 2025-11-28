@@ -1,9 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discover - Unfiltered Liquidity Pools</title>
+<style>
+body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
+h1 { font-size: 24px; }
+ul { list-style: none; padding: 0; }
+li { padding: 8px 0; border-bottom: 1px solid #444; }
+.loading { color: #888; }
+</style>
+</head>
+<body>
+
+<h1>Uniswap Pools</h1>
+<ul id="poolList">
+  <li class="loading">Loading pools...</li>
+</ul>
+
 <script>
-fetch("https://your-backend.onrender.com/pools/Uniswap")
+// Replace with your Render backend URL
+const backendURL = "YOUR_RENDER_LIVE_URL";
+
+fetch(`${backendURL}/pools/Uniswap`)
   .then(res => res.json())
   .then(data => {
-    console.log(data);
-    alert("Check the console for pool data!");
+    const list = document.getElementById("poolList");
+    list.innerHTML = ""; // remove loading
+    data.pairs.forEach(p => {
+      const li = document.createElement("li");
+      li.textContent = `${p.pair} — TVL: $${p.tvl.toLocaleString()}, Fees: $${p.fees}, APR: ${p.adjApr}%`;
+      list.appendChild(li);
+    });
   })
-  .catch(err => console.error("Error fetching pools:", err));
+  .catch(err => {
+    console.error("Error fetching pools:", err);
+    const list = document.getElementById("poolList");
+    list.innerHTML = '<li class="loading">Error loading pools</li>';
+  });
 </script>
+
+</body>
+</html>
