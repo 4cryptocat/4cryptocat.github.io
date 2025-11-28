@@ -1,1 +1,9 @@
-
+<script>
+fetch("https://your-backend.onrender.com/pools/Uniswap")
+  .then(res => res.json())
+  .then(data => {
+    console.log(data);
+    alert("Check the console for pool data!");
+  })
+  .catch(err => console.error("Error fetching pools:", err));
+</script>
